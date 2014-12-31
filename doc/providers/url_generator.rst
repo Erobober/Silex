@@ -54,8 +54,8 @@ When using Twig, the service can be used like this:
 
     {{ app.url_generator.generate('homepage') }}
 
-Moreover, if you use Twig, you will have access to the ``path()`` and
-``url()`` functions:
+Moreover, if you have ``twig-bridge`` as a Composer dep, you will have access
+to the ``path()`` and ``url()`` functions:
 
 .. code-block:: jinja
 
@@ -63,6 +63,14 @@ Moreover, if you use Twig, you will have access to the ``path()`` and
     {{ url('homepage') }} {# generates the absolute url http://example.org/ #}
     {{ path('hello', {name: 'Fabien'}) }}
     {{ url('hello', {name: 'Fabien'}) }} {# generates the absolute url http://example.org/hello/Fabien #}
+
+.. warning::
+
+    If you try to use the ``url_generator`` service outside the handling of a
+    request, you must explicitly flush routes first::
+
+        $app->flush();
+        $url = $app['url_generator']->generate('homepage');
 
 Traits
 ------

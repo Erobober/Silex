@@ -14,7 +14,8 @@ Parameters
   template contents. Use this if you want to define your templates inline.
 
 * **twig.options** (optional): An associative array of twig
-  options. Check out the twig documentation for more information.
+  options. Check out the `twig documentation <http://twig.sensiolabs.org/doc/api.html#environment-options>`_
+  for more information.
 
 * **twig.form.templates** (optional): An array of templates used to render
   forms (only available when the ``FormServiceProvider`` is enabled).
@@ -41,27 +42,21 @@ Registering
 .. note::
 
     Twig comes with the "fat" Silex archive but not with the regular one. If
-    you are using Composer, add it as a dependency to your ``composer.json``
-    file:
+    you are using Composer, add it as a dependency:
 
-    .. code-block:: json
+    .. code-block:: bash
 
-        "require": {
-            "twig/twig": ">=1.8,<2.0-dev"
-        }
+        composer require twig/twig
 
 Symfony2 Components Integration
 -------------------------------
 
 Symfony provides a Twig bridge that provides additional integration between
-some Symfony2 components and Twig. Add it as a dependency to your
-``composer.json`` file:
+some Symfony2 components and Twig. Add it as a dependency:
 
-.. code-block:: json
+.. code-block:: bash
 
-    "require": {
-        "symfony/twig-bridge": "~2.3"
-    }
+    composer require symfony/twig-bridge
 
 When present, the ``TwigServiceProvider`` will provide you with the following
 additional capabilities:
@@ -117,7 +112,7 @@ from a template:
 
     {{ render(app.request.baseUrl ~ '/sidebar') }}
 
-    {# or if you are also using UrlGeneratorServiceProvider with the SymfonyBridgesServiceProvider #}
+    {# or if you are also using the UrlGeneratorServiceProvider #}
     {{ render(url('sidebar')) }}
 
 .. note::
@@ -155,12 +150,12 @@ Customization
 You can configure the Twig environment before using it by extending the
 ``twig`` service::
 
-    $app['twig'] = $app->share($app->extend('twig', function($twig, $app) {
+    $app->extend('twig', function($twig, $app) {
         $twig->addGlobal('pi', 3.14);
         $twig->addFilter('levenshtein', new \Twig_Filter_Function('levenshtein'));
 
         return $twig;
-    }));
+    });
 
-For more information, check out the `Twig documentation
+For more information, check out the `official Twig documentation
 <http://twig.sensiolabs.org>`_.

@@ -54,7 +54,7 @@ class SecurityServiceProviderTest extends WebTestCase
         $this->assertEquals('ANONYMOUS', $client->getResponse()->getContent());
 
         $client->request('post', '/login_check', array('_username' => 'fabien', '_password' => 'bar'));
-        $this->assertEquals('Bad credentials', $app['security.last_error']($client->getRequest()));
+        $this->assertContains('Bad credentials', $app['security.last_error']($client->getRequest()));
         // hack to re-close the session as the previous assertions re-opens it
         $client->getRequest()->getSession()->save();
 
@@ -121,10 +121,6 @@ class SecurityServiceProviderTest extends WebTestCase
 
     public function testUserPasswordValidatorIsRegistered()
     {
-        if (!is_dir(__DIR__.'/../../../../vendor/symfony/validator')) {
-            $this->markTestSkipped('Validator dependency was not installed.');
-        }
-
         $app = new Application();
 
         $app->register(new ValidatorServiceProvider());
@@ -135,7 +131,7 @@ class SecurityServiceProviderTest extends WebTestCase
                     'http' => true,
                     'users' => array(
                         'admin' => array('ROLE_ADMIN', '513aeb0121909'),
-                    )
+                    ),
                 ),
             ),
         ));
@@ -143,6 +139,43 @@ class SecurityServiceProviderTest extends WebTestCase
         $app->boot();
 
         $this->assertInstanceOf('Symfony\Component\Security\Core\Validator\Constraints\UserPasswordValidator', $app['security.validator.user_password_validator']);
+    }
+
+    public function testExposedExceptions()
+    {
+        $app = $this->createApplication('form');
+        $app['security.hide_user_not_found'] = false;
+
+        $client = new Client($app);
+
+        $client->request('get', '/');
+        $this->assertEquals('ANONYMOUS', $client->getResponse()->getContent());
+
+        $client->request('post', '/login_check', array('_username' => 'fabien', '_password' => 'bar'));
+        $this->assertEquals('The presented password is invalid.', $app['security.last_error']($client->getRequest()));
+        $client->getRequest()->getSession()->save();
+
+        $client->request('post', '/login_check', array('_username' => 'unknown', '_password' => 'bar'));
+        $this->assertEquals('Username "unknown" does not exist.', $app['security.last_error']($client->getRequest()));
+        $client->getRequest()->getSession()->save();
+    }
+
+    public function testFakeRoutesAreSerializable()
+    {
+        $app = new Application();
+
+        $app->register(new SecurityServiceProvider(), array(
+            'security.firewalls' => array(
+                'admin' => array(
+                    'logout' => true,
+                ),
+            ),
+        ));
+
+        $app->boot();
+        $app->flush();
+
+        $this->assertCount(1, unserialize(serialize($app['routes'])));
     }
 
     public function createApplication($authenticationMethod = 'form')
@@ -167,7 +200,9 @@ class SecurityServiceProviderTest extends WebTestCase
                 'default' => array(
                     'pattern' => '^.*$',
                     'anonymous' => true,
-                    'form' => true,
+                    'form' => array(
+                        'require_previous_session' => false,
+                    ),
                     'logout' => true,
                     'users' => array(
                         // password is foo
@@ -184,13 +219,13 @@ class SecurityServiceProviderTest extends WebTestCase
             ),
         ));
 
-        $app->get('/login', function(Request $request) use ($app) {
+        $app->get('/login', function (Request $request) use ($app) {
             $app['session']->start();
 
             return $app['security.last_error']($request);
         });
 
-        $app->get('/', function() use ($app) {
+        $app->get('/', function () use ($app) {
             $user = $app['security']->getToken()->getUser();
 
             $content = is_object($user) ? $user->getUsername() : 'ANONYMOUS';
@@ -206,7 +241,7 @@ class SecurityServiceProviderTest extends WebTestCase
             return $content;
         });
 
-        $app->get('/admin', function() use ($app) {
+        $app->get('/admin', function () use ($app) {
             return 'admin';
         });
 
@@ -235,7 +270,7 @@ class SecurityServiceProviderTest extends WebTestCase
             ),
         ));
 
-        $app->get('/', function() use ($app) {
+        $app->get('/', function () use ($app) {
             $user = $app['security']->getToken()->getUser();
 
             $content = is_object($user) ? $user->getUsername() : 'ANONYMOUS';
@@ -251,7 +286,7 @@ class SecurityServiceProviderTest extends WebTestCase
             return $content;
         });
 
-        $app->get('/admin', function() use ($app) {
+        $app->get('/admin', function () use ($app) {
             return 'admin';
         });
 

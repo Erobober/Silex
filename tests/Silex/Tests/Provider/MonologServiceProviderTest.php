@@ -11,6 +11,7 @@
 
 namespace Silex\Tests\Provider;
 
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use Silex\Application;
@@ -38,8 +39,8 @@ class MonologServiceProviderTest extends \PHPUnit_Framework_TestCase
         $request = Request::create('/foo');
         $app->handle($request);
 
-        $this->assertTrue($app['monolog.handler']->hasInfo('> GET /foo'));
-        $this->assertTrue($app['monolog.handler']->hasInfo('< 200'));
+        $this->assertTrue($app['monolog.handler']->hasDebug('> GET /foo'));
+        $this->assertTrue($app['monolog.handler']->hasDebug('< 200'));
         $this->assertTrue($app['monolog.handler']->hasInfo('Matched route "GET_foo" (parameters: "_controller": "{}", "_route": "GET_foo")'));
     }
 
@@ -57,6 +58,17 @@ class MonologServiceProviderTest extends \PHPUnit_Framework_TestCase
         $app->handle($request);
 
         $this->assertTrue($app['monolog.handler']->hasDebug('logging a message'));
+    }
+
+    public function testOverrideFormatter()
+    {
+        $app = new Application();
+
+        $app->register(new MonologServiceProvider());
+        $app['monolog.formatter'] = new JsonFormatter();
+        $app['monolog.logfile'] = 'php://memory';
+
+        $this->assertInstanceOf('Monolog\Formatter\JsonFormatter', $app['logger']->popHandler()->getFormatter());
     }
 
     public function testErrorLogging()
@@ -108,7 +120,7 @@ class MonologServiceProviderTest extends \PHPUnit_Framework_TestCase
         $request = Request::create('/foo');
         $app->handle($request);
 
-        $this->assertTrue($app['monolog.handler']->hasInfo('< 302 /bar'));
+        $this->assertTrue($app['monolog.handler']->hasDebug('< 302 /bar'));
     }
 
     public function testErrorLoggingGivesWayToSecurityExceptionHandling()
@@ -136,6 +148,36 @@ class MonologServiceProviderTest extends \PHPUnit_Framework_TestCase
         $this->assertEmpty($app['monolog.handler']->getRecords(), "Expected no logging to occur");
     }
 
+    public function testStringErrorLevel()
+    {
+        $app = $this->getApplication();
+        $app['monolog.level'] = 'info';
+
+        $this->assertSame(Logger::INFO, $app['monolog.handler']->getLevel());
+    }
+
+    /**
+     * @expectedException InvalidArgumentException
+     * @expectedExceptionMessage Provided logging level 'foo' does not exist. Must be a valid monolog logging level.
+     */
+    public function testNonExistentStringErrorLevel()
+    {
+        $app = $this->getApplication();
+        $app['monolog.level'] = 'foo';
+
+        $app['monolog.handler']->getLevel();
+    }
+
+    public function testDisableListener()
+    {
+        $app = $this->getApplication();
+        unset($app['monolog.listener']);
+
+        $app->handle(Request::create('/404'));
+
+        $this->assertEmpty($app['monolog.handler']->getRecords(), "Expected no logging to occur");
+    }
+
     protected function assertMatchingRecord($pattern, $level, $handler)
     {
         $found = false;
@@ -155,11 +197,12 @@ class MonologServiceProviderTest extends \PHPUnit_Framework_TestCase
 
         $app->register(new MonologServiceProvider());
 
-        $app['monolog.handler'] = $app->share(function () use ($app) {
-            return new TestHandler($app['monolog.level']);
-        });
+        $app['monolog.handler'] = function () use ($app) {
+            $level = MonologServiceProvider::translateLevel($app['monolog.level']);
+
+            return new TestHandler($level);
+        };
 
         return $app;
     }
 }
-

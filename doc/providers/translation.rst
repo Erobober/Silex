@@ -13,7 +13,7 @@ Parameters
 * **locale** (optional): The locale for the translator. You will most likely
   want to set this based on some request parameter. Defaults to ``en``.
 
-* **locale_fallback** (optional): Fallback locale for the translator. It will
+* **locale_fallbacks** (optional): Fallback locales for the translator. It will
   be used when the current locale has no messages set. Defaults to ``en``.
 
 Services
@@ -37,21 +37,20 @@ Registering
 
 .. code-block:: php
 
+    $app->register(new Silex\Provider\LocaleServiceProvider());
     $app->register(new Silex\Provider\TranslationServiceProvider(), array(
-        'locale_fallback' => 'en',
+        'locale_fallbacks' => array('en'),
     ));
 
 .. note::
 
     The Symfony Translation Component comes with the "fat" Silex archive but
     not with the regular one. If you are using Composer, add it as a
-    dependency to your ``composer.json`` file:
+    dependency:
 
-    .. code-block:: json
+    .. code-block:: bash
 
-        "require": {
-            "symfony/translation": "~2.3"
-        }
+        composer require symfony/translation
 
 Usage
 -----
@@ -120,15 +119,11 @@ YAML-based language files
 Having your translations in PHP files can be inconvenient. This recipe will
 show you how to load translations from external YAML files.
 
-First, add the Symfony2 ``Config`` and ``Yaml`` components in your composer
-file:
+First, add the Symfony2 ``Config`` and ``Yaml`` components as dependencies:
 
-.. code-block:: json
+.. code-block:: bash
 
-    "require": {
-        "symfony/config": "~2.3",
-        "symfony/yaml": "~2.3"
-    }
+    composer require symfony/config symfony/yaml
 
 Next, you have to create the language mappings in YAML files. A naming you can
 use is ``locales/en.yml``. Just do the mapping in this file as follows:
@@ -143,7 +138,7 @@ translation files::
 
     use Symfony\Component\Translation\Loader\YamlFileLoader;
 
-    $app['translator'] = $app->share($app->extend('translator', function($translator, $app) {
+    $app->extend('translator', function($translator, $app) {
         $translator->addLoader('yaml', new YamlFileLoader());
 
         $translator->addResource('yaml', __DIR__.'/locales/en.yml', 'en');
@@ -151,7 +146,7 @@ translation files::
         $translator->addResource('yaml', __DIR__.'/locales/fr.yml', 'fr');
 
         return $translator;
-    }));
+    });
 
 XLIFF-based language files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
